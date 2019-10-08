@@ -1,23 +1,33 @@
+const id = x => x;
 const defaultTransform = x => x.value || x;
 const defaultCombine = xs => xs.join("");
 const doNotCombine = x => x;
+const reverseAndCombine = xs => xs.reverse().join("");
+const wrapValue = value => ({ value });
+const emptyValue = { value: "" };
 
-const mapTemplate = (transform = defaultTransform, combine = defaultCombine) => (
-  strings,
-  ...expressions
-) =>
-  combine(
-    strings.flatMap((s, i) => [s, expressions[i] ? transform(expressions[i]) : ""])
-  );
+const mkTag = (
+  transform = defaultTransform,
+  combine = defaultCombine,
+  wrapLiteral = id,
+  empty = ""
+) => (strings, ...tokens) => {
+  const mapped = strings.flatMap((s, i) => {
+    const lit = wrapLiteral(s);
+    const tok = tokens[i] ? transform(tokens[i]) : empty;
+    return [lit, tok];
+  });
 
-const renderTemplate = tag => (template, context) => {
-  const r = /\$\{/g;
-  const t = template.replace(r, "${this.");
-  const render = new Function("tag", `return tag\`${t}\``);
-  return render.call(context, tag);
+  return combine(mapped);
 };
 
-const applyTransform = x => {
+const mkRenderer = tag => (template, context) => {
+  const r = /\$\{/g;
+  const t = template.replace(r, "${this.");
+  return new Function("tag", `return tag\`${t}\``).call(context, tag);
+};
+
+const transform = x => {
   switch (x.transform) {
     case "uppercase":
       return x.value.toUpperCase();
@@ -33,27 +43,25 @@ const applyTransform = x => {
   }
 };
 
-const renderValueOrIdentity = renderTemplate(mapTemplate());
-const transformValueAndRender = renderTemplate(mapTemplate(applyTransform));
-const transformValueDoNotCombine = renderTemplate(
-  mapTemplate(applyTransform, doNotCombine)
-);
-const transformValueReverseAndRender = renderTemplate(
-  mapTemplate(applyTransform, xs => xs.reverse().join(""))
-);
+const renderValueOrIdentity = mkRenderer(mkTag());
+const transformValueAndRender = mkRenderer(mkTag(transform));
+const transformValueDoNotCombine = mkRenderer(mkTag(transform, doNotCombine));
+const transformValueReverseAndRender = mkRenderer(mkTag(transform, reverseAndCombine));
+const uniformDescription = mkRenderer(mkTag(id, doNotCombine, wrapValue, emptyValue));
 
 const template = "${person} is ${age} years old and lives in ${city}.";
 
-const context = {
+const simpleContext = { person: "Mr Popo", age: 64, city: "Brighton" };
+
+const complexContext = {
   person: { value: "Mr Popo", transform: "uppercase" },
   city: { value: "Brighton", transform: "reverse" },
   age: { value: 64, transform: "double" }
 };
 
-console.log(renderValueOrIdentity(template, context));
-console.log(
-  renderValueOrIdentity(template, { person: "Mr Popo", age: 64, city: "Brighton" })
-);
-console.log(transformValueAndRender(template, context));
-console.log(transformValueDoNotCombine(template, context));
-console.log(transformValueReverseAndRender(template, context));
+console.log(renderValueOrIdentity(template, complexContext));
+console.log(renderValueOrIdentity(template, simpleContext));
+console.log(transformValueAndRender(template, complexContext));
+console.log(transformValueDoNotCombine(template, complexContext));
+console.log(transformValueReverseAndRender(template, complexContext));
+console.log(uniformDescription(template, complexContext));
