@@ -12,11 +12,13 @@ const mkTag = (
   wrapLiteral = id,
   empty = ""
 ) => (strings, ...tokens) => {
-  const mapped = strings.flatMap((s, i) => {
-    const lit = wrapLiteral(s);
-    const tok = tokens[i] ? transform(tokens[i]) : empty;
-    return [lit, tok];
-  });
+  const mapped = strings
+    .map((s, i) => {
+      const lit = wrapLiteral(s);
+      const tok = tokens[i] ? transform(tokens[i]) : empty;
+      return [lit, tok];
+    })
+    .reduce((a, b) => [...a, ...b], []);
 
   return combine(mapped);
 };
@@ -46,8 +48,12 @@ const transform = x => {
 const renderValueOrIdentity = mkRenderer(mkTag());
 const transformValueAndRender = mkRenderer(mkTag(transform));
 const transformValueDoNotCombine = mkRenderer(mkTag(transform, doNotCombine));
-const transformValueReverseAndRender = mkRenderer(mkTag(transform, reverseAndCombine));
-const uniformDescription = mkRenderer(mkTag(id, doNotCombine, wrapValue, emptyValue));
+const transformValueReverseAndRender = mkRenderer(
+  mkTag(transform, reverseAndCombine)
+);
+const uniformDescription = mkRenderer(
+  mkTag(id, doNotCombine, wrapValue, emptyValue)
+);
 
 const template = "${person} is ${age} years old and lives in ${city}.";
 
