@@ -4,19 +4,22 @@ const defaultCombine = xs => xs.join("");
 const doNotCombine = x => x;
 const reverseAndCombine = xs => xs.reverse().join("");
 const wrapValue = value => ({ value });
-const emptyValue = { value: "" };
 
 const mkTag = (
   transform = defaultTransform,
   combine = defaultCombine,
-  wrapLiteral = id,
-  empty = ""
+  wrapLiteral = id
 ) => (strings, ...tokens) => {
   const mapped = strings
     .map((s, i) => {
       const lit = wrapLiteral(s);
-      const tok = tokens[i] ? transform(tokens[i]) : empty;
-      return [lit, tok];
+
+      if (tokens[i]) {
+        const tok = transform(tokens[i]);
+        return [lit, tok];
+      } else {
+        return [lit];
+      }
     })
     .reduce((a, b) => [...a, ...b], []);
 
@@ -51,9 +54,7 @@ const transformValueDoNotCombine = mkRenderer(mkTag(transform, doNotCombine));
 const transformValueReverseAndRender = mkRenderer(
   mkTag(transform, reverseAndCombine)
 );
-const uniformDescription = mkRenderer(
-  mkTag(id, doNotCombine, wrapValue, emptyValue)
-);
+const uniformDescription = mkRenderer(mkTag(id, doNotCombine, wrapValue));
 
 const template = "${person} is ${age} years old and lives in ${city}.";
 
